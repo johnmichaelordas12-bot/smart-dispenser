@@ -45,11 +45,14 @@ import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-from config import GMAIL_SENDER, GMAIL_APP_PASSWORD
 
 import pytz
 tz = pytz.timezone("Asia/Manila")
 UTC = pytz.UTC
+
+
+GMAIL_SENDER = os.getenv("GMAIL_SENDER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 def to_utc_naive(dt_aware):
     # dt_aware: timezone-aware datetime (Asia/Manila)
@@ -1706,41 +1709,79 @@ def get_recipient_emails(target="all"):
     return deduped
 
 
+import os
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+# ✅ USE ENV VARIABLES (IMPORTANT)
+GMAIL_SENDER = os.getenv("GMAIL_SENDER")
+GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
+
+
 def send_status_email(to_emails, subject: str, html_body: str):
     """
     Sends the same email to one or many recipients.
     Sends individually so recipient addresses stay private.
     """
-    if isinstance(to_emails, str):
-        to_emails = [to_emails]
 
-    to_emails = [e.strip().lower() for e in (to_emails or []) if e and e.strip()]
-    to_emails = list(dict.fromkeys(to_emails))  # dedupe
-
-    print("EMAIL DEBUG => recipients:", to_emails, "subject:", subject)
-
-    if not to_emails:
-        raise Exception("Recipient email list is empty")
-
-    server = smtplib.SMTP("smtp.gmail.com", 587, timeout=20)
     try:
+        # ✅ Normalize recipients
+        if isinstance(to_emails, str):
+            to_emails = [to_emails]
+
+        to_emails = [e.strip().lower() for e in (to_emails or []) if e and e.strip()]
+        to_emails = list(dict.fromkeys(to_emails))  # remove duplicates
+
+        print("EMAIL DEBUG => recipients:", to_emails)
+        print("EMAIL DEBUG => sender:", GMAIL_SENDER)
+        print("EMAIL DEBUG => password exists:", bool(GMAIL_APP_PASSWORD))
+
+        # ❌ No recipients
+        if not to_emails:
+            raise Exception("Recipient email list is empty")
+
+        # ❌ Missing credentials
+        if not GMAIL_SENDER or not GMAIL_APP_PASSWORD:
+            raise Exception("Gmail credentials not set in environment variables")
+
+        # ✅ Remove accidental spaces in password
+        app_password = GMAIL_APP_PASSWORD.replace(" ", "").strip()
+
+        # ✅ Connect to Gmail SMTP
+        server = smtplib.SMTP("smtp.gmail.com", 587, timeout=30)
+        server.set_debuglevel(1)  # 🔥 shows SMTP logs
+
         server.ehlo()
         server.starttls()
         server.ehlo()
-        server.login(GMAIL_SENDER, GMAIL_APP_PASSWORD)
 
+        # ✅ Login
+        server.login(GMAIL_SENDER, app_password)
+        print("EMAIL DEBUG => LOGIN SUCCESS")
+
+        # ✅ Send emails one by one
         for to_email in to_emails:
-            msg = MIMEMultipart("alternative")
-            msg["From"] = GMAIL_SENDER
-            msg["To"] = to_email
-            msg["Subject"] = subject
-            msg.attach(MIMEText(html_body, "html"))
+            try:
+                msg = MIMEMultipart("alternative")
+                msg["From"] = GMAIL_SENDER
+                msg["To"] = to_email
+                msg["Subject"] = subject
 
-            server.sendmail(GMAIL_SENDER, to_email, msg.as_string())
-            print("EMAIL DEBUG => SENT OK TO:", to_email)
+                msg.attach(MIMEText(html_body, "html"))
 
-    finally:
+                server.sendmail(GMAIL_SENDER, to_email, msg.as_string())
+                print("EMAIL DEBUG => SENT OK TO:", to_email)
+
+            except Exception as send_err:
+                print(f"EMAIL ERROR sending to {to_email}:", send_err)
+
         server.quit()
+        print("EMAIL DEBUG => ALL DONE")
+
+    except Exception as e:
+        print("EMAIL ERROR (MAIN):", str(e))
+        raise
 
 @app.route("/api/test_email", methods=["GET"])
 def test_email():
