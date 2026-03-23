@@ -445,6 +445,23 @@ def _rebuild_slots_by_cycle():
                 raise ValueError(f"Slot {slot_number} not found.")
             sched.slot_id = slot.id
 
+@app.route("/create_admin")
+def create_admin():
+    from werkzeug.security import generate_password_hash
+
+    if not User.query.filter_by(name="admin").first():
+        user = User(
+            name="admin",
+            email="admin@gmail.com",
+            password=generate_password_hash("admin"),
+            role="admin"
+        )
+        db.session.add(user)
+        db.session.commit()
+        return "Admin created"
+    
+    return "Admin already exists"
+
 @app.route("/api/schedules", methods=["POST"])
 @admin_required_api
 def create_schedule():
