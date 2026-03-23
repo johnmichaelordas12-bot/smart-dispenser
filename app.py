@@ -223,21 +223,31 @@ def register_user():
 def login_page():
     return render_template('login.html')
 
+
 @app.route('/login', methods=['POST'])
 def login_user():
-    data = request.json or {}
-    username = (data.get('username') or "").strip()
-    password = data.get('password') or ""
+    try:
+        data = request.get_json(silent=True) or request.form
 
-    user = User.query.filter_by(name=username).first()
+        print("LOGIN DATA:", data)
 
-    if not user or not check_password_hash(user.password, password):
-        return jsonify({"error": "Invalid username or password"}), 401
+        username = (data.get('username') or "").strip()
+        password = data.get('password') or ""
 
-    session['user_id'] = user.id
-    session['user_name'] = user.name
-    session['user_role'] = getattr(user, "role", "user")
-    return jsonify({"message": "Login successful"}), 200
+        user = User.query.filter_by(name=username).first()
+
+        if not user or not check_password_hash(user.password, password):
+            return jsonify({"error": "Invalid username or password"}), 401
+
+        session['user_id'] = user.id
+        session['user_name'] = user.name
+        session['user_role'] = getattr(user, "role", "user")
+
+        return jsonify({"message": "Login successful"}), 200
+
+    except Exception as e:
+        print("LOGIN ERROR:", e)
+        return jsonify({"error": "Server error"}), 500
 
 @app.route('/logout')
 def logout():
