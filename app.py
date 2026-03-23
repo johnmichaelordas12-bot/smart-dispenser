@@ -1926,8 +1926,12 @@ def seed_slots_4day():
 
 # ---------- Initialize Database ----------
 with app.app_context():
-    db.create_all()
-    seed_slots_4day()
+    try:
+        db.create_all()
+        seed_slots_4day()
+        print("DB INIT SUCCESS")
+    except Exception as e:
+        print("DB INIT ERROR:", e)
 
 # ---------- Scheduler ----------
 if not scheduler.running:
