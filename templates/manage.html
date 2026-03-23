@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedisiNa - Manage</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+  <style>
+    .manage-topbar { display:flex; justify-content:space-between; align-items:center; gap:14px; flex-wrap:wrap; }
+    .manage-topbar-left { display:flex; align-items:center; gap:10px; min-width:0; }
+    .manage-topbar-left h3 { margin:0; font-size:28px; font-weight:700; }
+    .manage-actions { display:flex; gap:10px; flex-wrap:wrap; }
+
+    .day-card{
+      background:#fff;
+      border:1px solid rgba(0,0,0,0.08);
+      border-radius:16px;
+      padding:16px;
+      margin-top:18px;
+      box-shadow:0 3px 10px rgba(0,0,0,0.05);
+    }
+    .day-title{ font-weight:700; font-size:20px; margin-bottom:14px; color:#1f2937; }
+
+    .table thead th{
+      background:#0f766e;
+      color:#fff;
+      vertical-align:middle;
+      white-space:nowrap;
+    }
+    .slot-badge{
+      display:inline-block;
+      padding:6px 10px;
+      border-radius:999px;
+      background:#ccfbf1;
+      color:#0f766e;
+      font-weight:600;
+      font-size:13px;
+    }
+
+    .modal-content{ border-radius:16px; }
+    .modal-header, .modal-footer{ padding:14px 16px; }
+    .modal-body{ padding:16px; }
+
+    #timeChips .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      font-size:13px;
+    }
+
+    @media (max-width: 768px){
+      .content{ padding:12px; }
+      .manage-topbar{ flex-direction:column; align-items:stretch; gap:12px; }
+      .manage-actions{ width:100%; }
+      .manage-actions .btn{ width:100%; }
+      .day-card{ padding:14px; border-radius:14px; }
+      .day-title{ font-size:18px; margin-bottom:12px; }
+      .modal-dialog{ margin:12px; }
+      .modal-footer{ flex-direction:column; gap:10px; }
+      .modal-footer .btn{ width:100%; }
+      .input-group{ flex-wrap:nowrap; }
+      #addTimeBtn{ min-width:52px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="sidebar">
+    <img src="https://img.pikbest.com/png-images/20250228/user-profile-vector-flat-illustration-avatar-person-icon-gender-neutral-silhouette_11563975.png!sw800" alt="User">
+    <h4>{{ session['user_name'] }}</h4>
+    <a href="/">📊 Dashboard</a>
+    <a href="/manage">📅 Schedule</a>
+    <a href="/analytics">🧠 Analytics</a>
+    <a href="/history">📜 History</a>
+    {% if session.get('user_role') == 'admin' %}
+      <a href="/settings">⚙️ Settings</a>
+    {% endif %}
+  </div>
+
+  <div class="content">
+    <div class="topbar manage-topbar">
+      <div class="manage-topbar-left">
+        <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+        <h3>Manage Schedule</h3>
+      </div>
+
+      <div class="manage-actions">
+        {% if session.get('user_role') == 'admin' %}
+          <button class="btn btn-teal" onclick="openAddModal()">➕ Add </button>
+        {% endif %}
+      </div>
+    </div>
+
+    <div class="day-card">
+      <div class="day-title">All Slots (1–14)</div>
+
+      <div class="table-responsive">
+        <table class="table table-bordered text-center align-middle mb-0">
+          <thead>
+            <tr>
+              <th style="width:120px;">Slot</th>
+              <th>Medicine</th>
+              <th style="width:160px;">Date</th>
+              <th style="width:160px;">Time</th>
+              <th style="width:140px;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="slotsTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div class="modal fade" id="scheduleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Medicine Schedule</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+
+        <div class="modal-body">
+          <input type="hidden" id="editingSlotNumber" value="">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Medicine <span class="text-danger">*</span></label>
+            <input type="text" id="medicineInput" class="form-control" placeholder="Enter medicine name...">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Date <span class="text-danger">*</span></label>
+            <input type="date" id="scheduleDate" class="form-control">
+            <small class="text-muted">Past dates are not allowed.</small>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Time <span class="text-danger">*</span></label>
+            <div class="input-group">
+              <input type="time" id="scheduleTime" class="form-control">
+              <button type="button" class="btn btn-outline-teal" id="addTimeBtn" onclick="addTime()">➕</button>
+            </div>
+            <small class="text-muted">Add up to <b>4</b> times for the selected date (Add mode only).</small>
+            <div id="timeChips" class="mt-2 d-flex flex-wrap gap-2"></div>
+          </div>
+
+          <div class="alert alert-light border small mb-0">
+            <b>Rules:</b>
+            <ul class="mb-0">
+              <li>Slots follow a 4-day cycle (Day 1–3: 4 slots, Day 4: 2 slots).</li>
+              <li>AM times assign to AM slots; PM times assign to PM slots.</li>
+              <li>Slot N cannot be earlier than Slot N-1.</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button class="btn btn-success" onclick="saveSchedule()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+  <script>
+    function toggleSidebar() {
+      document.querySelector(".sidebar").classList.toggle("active");
+    }
+
+    let slots = [];
+    const MAX_TIMES = 4;
+    let selectedTimes = [];
+    let mode = "add"; // add | edit
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      await loadSlots();
+
+      // set min date to today (client-side)
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, "0");
+      const dd = String(d.getDate()).padStart(2, "0");
+      const minDate = `${yyyy}-${mm}-${dd}`;
+      const dateInput = document.getElementById("scheduleDate");
+      if (dateInput) dateInput.min = minDate;
+    });
+
+    async function loadSlots() {
+      const res = await fetch("/api/slots");
+      slots = await res.json();
+      renderSlotsTable();
+    }
+
+    function formatTimeToAMPM(hhmm) {
+      if (!hhmm || hhmm === "—") return "—";
+      const [hStr, mStr] = hhmm.split(":");
+      const h = parseInt(hStr, 10);
+      const m = parseInt(mStr, 10);
+      if (Number.isNaN(h) || Number.isNaN(m)) return hhmm;
+      const ampm = h >= 12 ? "PM" : "AM";
+      const hour12 = ((h + 11) % 12) + 1;
+      return `${String(hour12).padStart(2, "0")}:${String(m).padStart(2, "0")} ${ampm}`;
+    }
+
+    function isPastDate(dateStr) {
+      if (!dateStr) return true;
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const picked = new Date(dateStr + "T00:00:00");
+      picked.setHours(0,0,0,0);
+      return picked < today;
+    }
+
+    function isAM(timeStr) {
+      const h = parseInt(timeStr.split(":")[0], 10);
+      return h < 12;
+    }
+
+    function buildDT(dateStr, timeStr) {
+      if (!dateStr || !timeStr) return null;
+      return new Date(`${dateStr}T${timeStr}:00`);
+    }
+
+    function getSlotObj(slotNumber) {
+      return slots.find(s => Number(s.slot_number) === Number(slotNumber));
+    }
+
+    function getActiveSchedule(slotNumber) {
+      const slot = getSlotObj(slotNumber);
+      if (!slot || !slot.medicines || slot.medicines.length === 0) return null;
+      return slot.medicines[0]; // 1 active schedule per slot
+    }
+
+    function computeDayNumberFromDate(dateStr) {
+      const picked = new Date(dateStr + "T00:00:00");
+      picked.setHours(0, 0, 0, 0);
+
+      let anchor = null;
+      for (let sn = 1; sn <= 14; sn++) {
+        const s = getActiveSchedule(sn);
+        if (s?.date) {
+          const d = new Date(s.date + "T00:00:00");
+          d.setHours(0, 0, 0, 0);
+          if (anchor === null || d < anchor) anchor = d;
+        }
+      }
+
+      if (anchor === null) {
+        anchor = new Date();
+        anchor.setHours(0, 0, 0, 0);
+      }
+
+      const diffDays = Math.floor((picked - anchor) / (1000 * 60 * 60 * 24));
+      const dayNum = ((diffDays % 4) + 4) % 4 + 1;
+      return dayNum;
+    }
+
+    // ✅ fixed pools per day cycle
+    function allowedSlotsForDay(dayNumber, am) {
+      if (dayNumber === 1) return am ? [1, 2] : [3, 4];
+      if (dayNumber === 2) return am ? [5, 6] : [7, 8];
+      if (dayNumber === 3) return am ? [9, 10] : [11, 12];
+      return am ? [13] : [14];
+    }
+
+    function renderSlotsTable() {
+      const tbody = document.getElementById("slotsTableBody");
+      tbody.innerHTML = "";
+
+      for (let sn = 1; sn <= 14; sn++) {
+        const sched = getActiveSchedule(sn);
+        const med = sched?.name || "Empty";
+        const date = sched?.date || "—";
+        const timeText = sched?.time ? formatTimeToAMPM(sched.time) : "—";
+
+        tbody.innerHTML += `
+          <tr>
+            <td><span class="slot-badge">Slot ${sn}</span></td>
+            <td>${med}</td>
+            <td>${date}</td>
+            <td>${timeText}</td>
+            <td>
+              {% if session.get('user_role') == 'admin' %}
+                <button class="btn btn-sm btn-warning" onclick="editSlot(${sn})">✏️</button>
+                <button class="btn btn-sm btn-danger" onclick="deleteSlot(${sn})">🗑</button>
+              {% else %}
+                <span class="text-muted">View only</span>
+              {% endif %}
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    /* -------- time chips (ADD mode) -------- */
+    function addTime() {
+      if (mode !== "add") {
+        Swal.fire("Info", "In Edit mode, you can set only one time per slot.", "info");
+        return;
+      }
+
+      const t = document.getElementById("scheduleTime").value;
+      if (!t) return Swal.fire("Error", "Please select a time first.", "error");
+      if (selectedTimes.includes(t)) return Swal.fire("Info", "That time is already added.", "info");
+      if (selectedTimes.length >= MAX_TIMES) {
+        return Swal.fire("Limit reached", `You can only add up to ${MAX_TIMES} times.`, "warning");
+      }
+
+      selectedTimes.push(t);
+      selectedTimes.sort();
+      renderTimeChips();
+    }
+
+    function removeTime(t) {
+      selectedTimes = selectedTimes.filter(x => x !== t);
+      renderTimeChips();
+    }
+
+    function renderTimeChips() {
+      const wrap = document.getElementById("timeChips");
+      if (!wrap) return;
+
+      wrap.innerHTML = "";
+      selectedTimes.forEach(t => {
+        const chip = document.createElement("span");
+        chip.className = "badge rounded-pill text-bg-light border";
+        chip.style.padding = "10px 12px";
+        chip.innerHTML = `
+          <span class="me-2">${formatTimeToAMPM(t)}</span>
+          <button type="button" class="btn btn-sm btn-outline-danger py-0 px-2"
+            style="line-height:1;" onclick="removeTime('${t}')">x</button>
+        `;
+        wrap.appendChild(chip);
+      });
+
+      const addBtn = document.getElementById("addTimeBtn");
+      if (addBtn) addBtn.disabled = selectedTimes.length >= MAX_TIMES;
+    }
+
+    /* -------- modal open -------- */
+    function openAddModal() {
+      mode = "add";
+      document.querySelector("#scheduleModal .modal-title").textContent = "Add Medicine Schedule";
+      document.getElementById("editingSlotNumber").value = "";
+
+      document.getElementById("medicineInput").value = "";
+      document.getElementById("scheduleDate").value = "";
+      document.getElementById("scheduleTime").value = "";
+
+      selectedTimes = [];
+      renderTimeChips();
+
+      const addBtn = document.getElementById("addTimeBtn");
+      if (addBtn) addBtn.disabled = false;
+
+      new bootstrap.Modal(document.getElementById("scheduleModal")).show();
+    }
+
+    function editSlot(slotNumber) {
+      mode = "edit";
+      document.querySelector("#scheduleModal .modal-title").textContent = `Edit Slot ${slotNumber}`;
+      document.getElementById("editingSlotNumber").value = String(slotNumber);
+
+      const sched = getActiveSchedule(slotNumber);
+      document.getElementById("medicineInput").value = sched?.name || "";
+      document.getElementById("scheduleDate").value = sched?.date || "";
+      document.getElementById("scheduleTime").value = sched?.time || "";
+
+      selectedTimes = [];
+      renderTimeChips();
+
+      const addBtn = document.getElementById("addTimeBtn");
+      if (addBtn) addBtn.disabled = true;
+
+      new bootstrap.Modal(document.getElementById("scheduleModal")).show();
+    }
+
+    /* -------- SAVE -------- */
+    async function saveSchedule() {
+      const medicine = document.getElementById("medicineInput").value.trim();
+      const date = document.getElementById("scheduleDate").value;
+      const timeSingle = document.getElementById("scheduleTime").value;
+
+      if (!medicine || !date) {
+        return Swal.fire("Error", "Medicine and Date are required.", "error");
+      }
+
+      if (isPastDate(date)) {
+        return Swal.fire("Invalid Date", "You cannot set a schedule in the past.", "warning");
+      }
+
+      // ---- EDIT MODE ----
+      if (mode === "edit") {
+        const slotNumber = parseInt(document.getElementById("editingSlotNumber").value || "0", 10);
+        if (!slotNumber) return Swal.fire("Error", "Missing slot number.", "error");
+        if (!timeSingle) return Swal.fire("Error", "Time is required.", "error");
+
+        const result = await putSlotSchedule(slotNumber, medicine, date, timeSingle, false);
+        if (result && result.success) {
+          Swal.fire(
+            "Saved!",
+            `Updated successfully. New slot: ${result.new_slot_number}`,
+            "success"
+          );
+          bootstrap.Modal.getInstance(document.getElementById("scheduleModal")).hide();
+          await loadSlots();
+        }
+        return;
+      }
+
+      // ---- ADD MODE ----
+      let times = [...selectedTimes];
+      if (times.length === 0 && timeSingle) times = [timeSingle];
+
+      if (times.length === 0) {
+        return Swal.fire("Error", "Add at least one time.", "error");
+      }
+
+      if (times.length > MAX_TIMES) {
+        times = times.slice(0, MAX_TIMES);
+      }
+
+      times.sort();
+
+      const results = { ok: [], err: [] };
+
+      for (const t of times) {
+        const result = await createSchedule(medicine, date, t, true);
+
+        if (result && result.slot_number) {
+          results.ok.push(`✔ ${formatTimeToAMPM(t)} → Slot ${result.slot_number}`);
+        } else {
+          results.err.push(result?.error || `Failed to save ${formatTimeToAMPM(t)}`);
+        }
+      }
+
+      if (results.ok.length && !results.err.length) {
+        Swal.fire("Saved!", results.ok.join("<br>"), "success");
+      } else if (results.ok.length && results.err.length) {
+        Swal.fire({
+          icon: "warning",
+          title: "Partially saved",
+          html: `
+            <div class="text-start">
+              <b>Saved:</b><br>${results.ok.join("<br>")}
+              <hr>
+              <b>Errors:</b><br>${results.err.join("<br>")}
+            </div>
+          `
+        });
+      } else {
+        Swal.fire("Error", results.err.join("<br>") || "Nothing saved.", "error");
+        return;
+      }
+
+      bootstrap.Modal.getInstance(document.getElementById("scheduleModal")).hide();
+      selectedTimes = [];
+      renderTimeChips();
+      await loadSlots();
+    }
+
+    async function putSlotSchedule(slotNumber, medicine, date, time, silent) {
+      try {
+        const res = await fetch(`/api/slots/${slotNumber}/schedule`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            medicine_name: medicine,
+            date: date,
+            time: time
+          })
+        });
+
+        const text = await res.text();
+        let payload;
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { error: text };
+        }
+
+        if (!res.ok) throw new Error(payload.error || `Request failed (${res.status})`);
+
+        return {
+          success: true,
+          ...payload
+        };
+      } catch (err) {
+        if (!silent) Swal.fire("Error", err.message, "error");
+        return false;
+      }
+    }
+
+    async function createSchedule(medicine, date, time, silent = false) {
+      try {
+        const res = await fetch("/api/schedules", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            medicine_name: medicine,
+            date: date,
+            time: time
+          })
+        });
+
+        const text = await res.text();
+        let payload;
+        try {
+          payload = JSON.parse(text);
+        } catch {
+          payload = { error: text };
+        }
+
+        if (!res.ok) {
+          throw new Error(payload.error || `Request failed (${res.status})`);
+        }
+
+        return payload;
+      } catch (err) {
+        if (!silent) {
+          Swal.fire("Error", err.message, "error");
+        }
+        return { error: err.message };
+      }
+    }
+
+    async function deleteSlot(slotNumber) {
+      const confirm = await Swal.fire({
+        title: `Clear schedule for Slot ${slotNumber}?`,
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Yes, clear it"
+      });
+      if (!confirm.isConfirmed) return;
+
+      try {
+        const res = await fetch(`/api/slots/${slotNumber}`, { method: "DELETE" });
+        const payload = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(payload.error || "Delete failed");
+
+        Swal.fire("Cleared!", `Slot ${slotNumber} cleared.`, "success");
+        await loadSlots();
+      } catch (err) {
+        Swal.fire("Error", err.message, "error");
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MedisiNa - Users</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+  <style>
+    .users-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .users-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 0;
+    }
+
+    .users-topbar-left h3 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .users-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .logout-btn {
+      border-radius: 10px;
+      padding: 8px 14px;
+      font-weight: 600;
+    }
+
+    .users-welcome {
+      margin-top: 18px;
+      margin-bottom: 18px;
+    }
+
+    .users-welcome p {
+      margin: 0;
+      font-size: 17px;
+      color: #374151;
+    }
+
+    .users-summary {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+
+    .summary-card {
+      border-radius: 18px;
+      padding: 20px;
+      color: #fff;
+      box-shadow: 0 6px 18px rgba(15, 118, 110, 0.12);
+    }
+
+    .summary-card h5 {
+      margin: 0 0 8px;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .summary-card h2 {
+      margin: 0;
+      font-size: 30px;
+      font-weight: 800;
+    }
+
+    .summary-card.teal-dark {
+      background: linear-gradient(135deg, #0f766e, #115e59);
+    }
+
+    .summary-card.teal-light {
+      background: linear-gradient(135deg, #14b8a6, #2dd4bf);
+      color: #083344;
+    }
+
+    .users-card {
+      background: #ffffff;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 4px 16px rgba(15, 118, 110, 0.08);
+      border: 1px solid rgba(20, 184, 166, 0.12);
+    }
+
+    .users-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .users-card-header h4 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .top-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .top-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+    }
+
+    .top-btn.primary {
+      background: #0f766e;
+      color: #fff;
+    }
+
+    .top-btn.primary:hover {
+      background: #115e59;
+    }
+
+    .top-btn.secondary {
+      background: #ccfbf1;
+      color: #115e59;
+    }
+
+    .top-btn.secondary:hover {
+      background: #99f6e4;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border-radius: 14px;
+      border: 1px solid #dbeafe;
+    }
+
+    .users-table {
+      width: 100%;
+      min-width: 700px;
+      border-collapse: collapse;
+      background: #fff;
+    }
+
+    .users-table th,
+    .users-table td {
+      padding: 14px 16px;
+      text-align: left;
+      border-bottom: 1px solid #e6fffb;
+      vertical-align: middle;
+    }
+
+    .users-table th {
+      background: #f0fdfa;
+      color: #0f766e;
+      font-size: 14px;
+      font-weight: 700;
+      white-space: nowrap;
+    }
+
+    .users-table td {
+      color: #475569;
+      font-size: 14px;
+    }
+
+    .users-table tr:hover td {
+      background: #f8fffe;
+    }
+
+    .user-name {
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .user-email {
+      color: #64748b;
+      word-break: break-word;
+    }
+
+    .role-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 5px 12px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+    }
+
+    .role-admin {
+      background: #ccfbf1;
+      color: #0f766e;
+      border: 1px solid #99f6e4;
+    }
+
+    .role-user {
+      background: #dcfce7;
+      color: #15803d;
+      border: 1px solid #bbf7d0;
+    }
+
+    .delete-btn {
+      border: none;
+      background: #ef4444;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 13px;
+      transition: 0.2s ease;
+    }
+
+    .delete-btn:hover {
+      background: #dc2626;
+    }
+
+    .current-admin {
+      color: #0f766e;
+      font-weight: 700;
+      font-size: 13px;
+      background: #ecfeff;
+      padding: 6px 10px;
+      border-radius: 999px;
+      display: inline-block;
+    }
+
+    .empty-text {
+      text-align: center;
+      color: #64748b;
+      padding: 26px 14px;
+      font-size: 15px;
+    }
+
+    @media (max-width: 992px) {
+      .users-summary {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 768px) {
+      .content {
+        padding: 12px;
+      }
+
+      .users-topbar-left h3 {
+        font-size: 22px;
+      }
+
+      .users-welcome p {
+        font-size: 15px;
+        line-height: 1.5;
+      }
+
+      .users-card {
+        padding: 16px;
+      }
+
+      .users-card-header {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .top-actions {
+        width: 100%;
+      }
+
+      .top-btn {
+        flex: 1 1 100%;
+      }
+
+      .summary-card {
+        padding: 18px;
+      }
+
+      .summary-card h2 {
+        font-size: 26px;
+      }
+    }
+
+    @media (max-width: 480px) {
+      .content {
+        padding: 10px;
+      }
+
+      .users-topbar {
+        gap: 10px;
+      }
+
+      .users-topbar-left h3 {
+        font-size: 19px;
+      }
+
+      .logout-btn {
+        padding: 7px 12px;
+        font-size: 13px;
+      }
+
+      .users-card {
+        border-radius: 16px;
+        padding: 14px;
+      }
+
+      .summary-card {
+        border-radius: 16px;
+      }
+
+      .summary-card h5 {
+        font-size: 15px;
+      }
+
+      .summary-card h2 {
+        font-size: 24px;
+      }
+
+      .users-table th,
+      .users-table td {
+        padding: 12px 12px;
+        font-size: 13px;
+      }
+
+      .delete-btn {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="sidebar">
+    <img src="https://img.pikbest.com/png-images/20250228/user-profile-vector-flat-illustration-avatar-person-icon-gender-neutral-silhouette_11563975.png!sw800" alt="User">
+    <h4>{{ session['user_name'] }}</h4>
+    <a href="/">📊 Dashboard</a>
+    <a href="/manage">📅 Schedule</a>
+    <a href="/analytics">🧠 Analytics</a>
+    <a href="/history">📜 History</a>
+    {% if session.get('user_role') == 'admin' %}
+      <a href="/settings" style="background-color:rgba(255,255,255,0.18);">⚙️ Settings</a>
+    {% endif %}
+  </div>
+
+  <div class="content">
+    <div class="topbar users-topbar">
+      <div class="users-topbar-left">
+        <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+        <h3>Settings</h3>
+      </div>
+
+      
+    </div>
+
+    <div class="users-welcome">
+      <p>Hello, <strong>{{ session['user_name'] }}</strong> 👋 — manage all registered MedisiNa users here.</p>
+    </div>
+
+    <div class="users-summary">
+      <div class="summary-card teal-dark">
+        <h5>Total Registered Users</h5>
+        <h2>{{ users|length }}</h2>
+      </div>
+
+      <div class="summary-card teal-light">
+        <h5>System Access</h5>
+        <h2>Active</h2>
+      </div>
+    </div>
+
+    <div class="users-card">
+      <div class="users-card-header">
+        <h4>User Accounts List</h4>
+        <div class="top-actions">
+          <button class="top-btn primary" onclick="window.location.href='/register'">Create User</button>
+          <button class="top-btn secondary" onclick="window.location.href='/settings'">Back to Settings</button>
+        </div>
+      </div>
+
+      {% if users %}
+        <div class="table-wrap">
+          <table class="users-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th style="min-width: 130px;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+              <tr id="user-row-{{ user.id }}">
+                <td>{{ user.id }}</td>
+                <td class="user-name">{{ user.name }}</td>
+                <td class="user-email">{{ user.email }}</td>
+                <td>
+                  <span class="role-badge {{ 'role-admin' if user.role == 'admin' else 'role-user' }}">
+                    {{ user.role }}
+                  </span>
+                </td>
+                <td>
+                  {% if user.id != session['user_id'] %}
+                    <button class="delete-btn" onclick="deleteUser({{ user.id }}, '{{ user.name }}')">Delete</button>
+                  {% else %}
+                    <span class="current-admin">Current Admin</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-text">No users found.</div>
+      {% endif %}
+    </div>
+  </div>
+
+  <script>
+    function toggleSidebar() {
+      document.querySelector(".sidebar").classList.toggle("active");
+    }
+
+    async function deleteUser(userId, userName) {
+      const confirmDelete = confirm(`Are you sure you want to delete ${userName}?`);
+      if (!confirmDelete) return;
+
+      try {
+        const res = await fetch(`/api/users/${userId}`, {
+          method: 'DELETE'
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert(data.message || "User deleted successfully");
+          const row = document.getElementById(`user-row-${userId}`);
+          if (row) row.remove();
+        } else {
+          alert(data.error || "Failed to delete user.");
+        }
+      } catch (err) {
+        console.error(err);
+        alert("An error occurred while deleting the user.");
+      }
+    }
+  </script>
+
+</body>
+</html>

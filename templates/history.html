@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>History - Smart Medication Dispenser</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+
+    <style>
+        .history-title {
+            font-size: 1.5rem;
+            margin: 0;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            justify-content: flex-end;
+        }
+
+        .topbar-actions .btn {
+            white-space: nowrap;
+        }
+
+        .filter-actions {
+            display: flex;
+            gap: 8px;
+            width: 100%;
+        }
+
+        .table-card {
+            border: 0;
+            border-radius: 14px;
+            overflow: hidden;
+        }
+
+        .history-table {
+            margin-bottom: 0;
+            min-width: 720px;
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 16px;
+            }
+
+            .topbar {
+                align-items: stretch !important;
+            }
+
+            .topbar > div:first-child,
+            .topbar-actions {
+                width: 100%;
+            }
+
+            .topbar-actions {
+                justify-content: stretch;
+            }
+
+            .topbar-actions .btn {
+                flex: 1 1 100%;
+            }
+
+            .history-title {
+                font-size: 1.25rem;
+            }
+
+            .filter-actions {
+                flex-direction: column;
+            }
+
+            .filter-actions .btn {
+                width: 100%;
+            }
+        }
+
+        @media (max-width: 576px) {
+            .card-body {
+                padding: 1rem;
+            }
+
+            .history-title {
+                font-size: 1.1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+<div class="sidebar">
+    <img src="https://img.pikbest.com/png-images/20250228/user-profile-vector-flat-illustration-avatar-person-icon-gender-neutral-silhouette_11563975.png!sw800" alt="User">
+    <h4>{{ session['user_name'] }}</h4>
+    <a href="/">📊 Dashboard</a>
+    <a href="/manage">📅 Schedule</a>
+    <a href="/analytics">🧠 Analytics</a>
+    <a href="/history" style="background-color:#0056b3;">📜 History</a>
+    {% if session.get('user_role') == 'admin' %}
+        <a href="/register">👤 Create User</a>
+    {% endif %}
+</div>
+
+<div class="content">
+    <div class="topbar d-flex justify-content-between align-items-center flex-wrap gap-3">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+            <h3 class="history-title">History Log</h3>
+        </div>
+
+        <div class="topbar-actions">
+            <a href="/export/history/pdf" id="pdfExportBtn" class="btn btn-danger">Print PDF</a>
+            <a href="/export/history/excel" id="excelExportBtn" class="btn btn-success">Export Excel</a>
+            
+        </div>
+    </div>
+
+    <div class="card mt-3 mb-3 shadow-sm border-0">
+        <div class="card-body">
+            <div class="row g-3 align-items-end">
+                <div class="col-12 col-md-4">
+                    <label for="start_date" class="form-label">From</label>
+                    <input type="date" id="start_date" class="form-control">
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <label for="end_date" class="form-label">To</label>
+                    <input type="date" id="end_date" class="form-control">
+                </div>
+
+                <div class="col-12 col-md-4">
+                    <div class="filter-actions">
+                        <button class="btn btn-primary" onclick="applyFilter()">Filter</button>
+                        <button class="btn btn-secondary" onclick="clearFilter()">Clear</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm table-card">
+        <div class="table-responsive">
+            <table class="table table-striped table-bordered align-middle history-table">
+                <thead class="table-light">
+                    <tr>
+                        <th>Medicine</th>
+                        <th>Date</th>
+                        <th>Scheduled Time</th>
+                        <th>Taken At</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="history-body"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function updateExportLinks() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+
+    const params = new URLSearchParams();
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    const query = params.toString() ? `?${params.toString()}` : '';
+
+    document.getElementById('pdfExportBtn').href = '/export/history/pdf' + query;
+    document.getElementById('excelExportBtn').href = '/export/history/excel' + query;
+}
+
+async function loadHistory(startDate = '', endDate = '') {
+    let url = '/api/history';
+    const params = new URLSearchParams();
+
+    if (startDate) params.append('start_date', startDate);
+    if (endDate) params.append('end_date', endDate);
+
+    if (params.toString()) {
+        url += '?' + params.toString();
+    }
+
+    const res = await fetch(url);
+    const data = await res.json();
+    const tbody = document.getElementById('history-body');
+    tbody.innerHTML = '';
+
+    if (!Array.isArray(data) || data.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="5" class="text-center text-muted py-4">
+                    No history found for the selected date range.
+                </td>
+            </tr>
+        `;
+        return;
+    }
+
+    data.forEach(r => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${r.medicine}</td>
+            <td>${r.date}</td>
+            <td>${r.scheduled_time}</td>
+            <td>${r.taken_at}</td>
+            <td>
+                <span class="badge ${r.status === 'Taken' ? 'bg-success' : 'bg-danger'}">
+                    ${r.status}
+                </span>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function applyFilter() {
+    const startDate = document.getElementById('start_date').value;
+    const endDate = document.getElementById('end_date').value;
+    updateExportLinks();
+    loadHistory(startDate, endDate);
+}
+
+function clearFilter() {
+    document.getElementById('start_date').value = '';
+    document.getElementById('end_date').value = '';
+    updateExportLinks();
+    loadHistory();
+}
+
+document.getElementById('start_date').addEventListener('change', updateExportLinks);
+document.getElementById('end_date').addEventListener('change', updateExportLinks);
+
+loadHistory();
+updateExportLinks();
+
+function toggleSidebar() {
+    document.querySelector(".sidebar").classList.toggle("active");
+}
+</script>
+</body>
+</html>

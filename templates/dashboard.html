@@ -1,0 +1,612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedisiNa - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        .topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            min-width: 0;
+        }
+
+        .topbar-left h3 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .dashboard-topbar-right {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            position: relative;
+            flex-wrap: wrap;
+        }
+
+        .notification-bell {
+            position: relative;
+            font-size: 22px;
+            cursor: pointer;
+            color: #0f766e;
+            user-select: none;
+            line-height: 1;
+        }
+
+        .notification-bell .count {
+            position: absolute;
+            top: -8px;
+            right: -10px;
+            background: red;
+            color: white;
+            font-size: 12px;
+            border-radius: 50%;
+            padding: 2px 6px;
+        }
+
+        .notification-panel {
+            position: absolute;
+            right: 0;
+            top: calc(100% + 10px);
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            width: 340px;
+            max-width: calc(100vw - 32px);
+            max-height: 420px;
+            overflow-y: auto;
+            display: none;
+            z-index: 999;
+            border: 1px solid #eee;
+        }
+
+        .notification-header {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: #f8fafc;
+            border-radius: 12px 12px 0 0;
+            gap: 10px;
+        }
+
+        .notification-item {
+            padding: 10px 12px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-item small {
+            color: #666;
+            font-size: 12px;
+        }
+
+        .welcome-card {
+            margin-top: 18px;
+            margin-bottom: 16px;
+        }
+
+        .welcome-text {
+            margin: 0;
+            font-size: 20px;
+            font-weight: 500;
+            color: #222;
+        }
+
+        .logout-btn {
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-weight: 600;
+        }
+
+        .dashboard-cards {
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 16px;
+            margin-top: 20px;
+        }
+
+        .dashboard-cards .card-item {
+            min-height: 120px;
+            border-radius: 16px;
+            padding: 20px 18px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            margin-bottom: 0;
+        }
+
+        .dashboard-cards .card-item h4 {
+            margin-bottom: 8px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .dashboard-cards .card-item h2 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .dashboard-charts {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin-top: 24px;
+        }
+
+        .chart-card {
+            flex: 1 1 420px;
+            min-width: 280px;
+            height: 300px;
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 3px 10px rgba(0,0,0,.05);
+        }
+
+        .chart-title {
+            font-size: 15px;
+            font-weight: 700;
+            color: #374151;
+            margin-bottom: 12px;
+        }
+
+        .chart-card canvas {
+            width: 100% !important;
+            height: calc(100% - 30px) !important;
+        }
+
+        @media (max-width: 768px) {
+            .topbar {
+                flex-wrap: nowrap;
+                gap: 12px;
+                align-items: center;
+                padding: 14px 16px;
+                border-radius: 14px;
+            }
+
+            .topbar-left {
+                width: 100%;
+                gap: 10px;
+            }
+
+            .topbar-left h3 {
+                font-size: 22px;
+            }
+
+            .dashboard-topbar-right {
+                flex-shrink: 0;
+                justify-content: flex-end;
+                gap: 10px;
+            }
+
+            .dashboard-topbar-right .btn {
+                padding: 8px 12px;
+                font-size: 14px;
+            }
+
+            .notification-panel {
+                right: 0;
+                width: 290px;
+                max-width: 290px;
+            }
+
+            .welcome-card {
+                margin-top: 14px;
+                margin-bottom: 14px;
+                padding: 0 2px;
+            }
+
+            .welcome-text {
+                font-size: 16px;
+                line-height: 1.4;
+            }
+
+            .dashboard-cards {
+                grid-template-columns: 1fr;
+                gap: 14px;
+                margin-top: 0;
+            }
+
+            .dashboard-cards .card-item {
+                min-width: 100%;
+                min-height: 105px;
+                padding: 18px;
+                border-radius: 16px;
+            }
+
+            .dashboard-cards .card-item h4 {
+                font-size: 17px;
+                margin-bottom: 6px;
+            }
+
+            .dashboard-cards .card-item h2 {
+                font-size: 28px;
+            }
+
+            .chart-card {
+                flex: 1 1 100%;
+                min-width: 100%;
+                height: 280px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .content {
+                padding: 12px;
+            }
+
+            .topbar {
+                padding: 12px 14px;
+            }
+
+            .topbar-left h3 {
+                font-size: 18px;
+            }
+
+            .notification-bell {
+                font-size: 20px;
+            }
+
+            .dashboard-topbar-right .btn {
+                padding: 7px 10px;
+                font-size: 13px;
+            }
+
+            .dashboard-cards .card-item {
+                min-height: 100px;
+                padding: 16px;
+            }
+
+            .dashboard-cards .card-item h4 {
+                font-size: 16px;
+            }
+
+            .dashboard-cards .card-item h2 {
+                font-size: 26px;
+            }
+
+            .chart-card {
+                height: 250px;
+                padding: 10px;
+            }
+
+            .notification-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .notification-panel {
+                width: calc(100vw - 24px);
+                max-width: calc(100vw - 24px);
+                right: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <img src="https://img.pikbest.com/png-images/20250228/user-profile-vector-flat-illustration-avatar-person-icon-gender-neutral-silhouette_11563975.png!sw800" alt="User">
+        <h4>{{ session['user_name'] }}</h4>
+        <a href="/">📊 Dashboard</a>
+        <a href="/manage">📅 Schedule</a>
+        <a href="/analytics">🧠 Analytics</a>
+        <a href="/history">📜 History</a>
+        {% if session.get('user_role') == 'admin' %}
+          <a href="/settings">⚙️ Settings</a>
+        {% endif %}
+    </div>
+
+    <div class="content">
+        <div class="topbar">
+            <div class="topbar-left">
+                <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+                <h3>MedisiNa</h3>
+            </div>
+
+            <div class="dashboard-topbar-right" id="notif-wrapper">
+                <div class="notification-bell" id="notif-bell" onclick="toggleNotifications()" title="Notifications">
+                    🔔<span id="notif-count" class="count" style="display:none;">0</span>
+                </div>
+                <a href="/logout" class="btn btn-danger logout-btn">Log out</a>
+
+                <div id="notification-panel" class="notification-panel">
+                    <div class="notification-header">
+                        <strong>Notifications</strong>
+                        <button class="btn btn-sm btn-outline-teal" onclick="closeNotifications()">Close</button>
+                    </div>
+                    <div id="notification-body"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="welcome-card">
+            <p class="welcome-text">Welcome, <strong>{{ user_name }}</strong> 👋</p>
+        </div>
+
+        <div class="dashboard-cards">
+            <div class="card-item card-blue">
+                <h4>Total Pills</h4>
+                <h2 id="total">0</h2>
+            </div>
+            <div class="card-item card-red">
+                <h4>Missed Pills</h4>
+                <h2 id="missed">0</h2>
+            </div>
+            <div class="card-item card-yellow">
+                <h4>Compliance (%)</h4>
+                <h2 id="compliance">0%</h2>
+            </div>
+        </div>
+
+        <div class="dashboard-charts">
+            <div class="chart-card">
+                <div class="chart-title">Pill Intake Overview</div>
+                <canvas id="barChart"></canvas>
+            </div>
+
+            <div class="chart-card">
+                <div class="chart-title">Taken vs Missed</div>
+                <canvas id="pieChart"></canvas>
+            </div>
+        </div>
+    </div>
+
+<script>
+let barChartInstance = null;
+let pieChartInstance = null;
+
+async function loadAnalytics() {
+    try {
+        const res = await fetch('/api/dashboard_analytics');
+        const data = await res.json();
+
+        document.getElementById('total').innerText = data.total;
+        document.getElementById('missed').innerText = data.missed;
+        document.getElementById('compliance').innerText = data.compliance + '%';
+
+        const taken = Number(data.taken || 0);
+        const missed = Number(data.missed || 0);
+
+        const barCanvas = document.getElementById('barChart');
+        if (barCanvas) {
+            if (!barChartInstance) {
+                barChartInstance = new Chart(barCanvas, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Taken', 'Missed'],
+                        datasets: [{
+                            label: 'Pills',
+                            data: [taken, missed],
+                            backgroundColor: ['#0f766e', '#14b8a6'],
+                            borderColor: ['#115e59', '#0f766e'],
+                            borderWidth: 1,
+                            borderRadius: 8
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#334155'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#475569' },
+                                grid: { color: 'rgba(15, 118, 110, 0.08)' }
+                            },
+                            y: {
+                                beginAtZero: true,
+                                ticks: { precision: 0, color: '#475569' },
+                                grid: { color: 'rgba(15, 118, 110, 0.08)' }
+                            }
+                        }
+                    }
+                });
+            } else {
+                barChartInstance.data.datasets[0].data = [taken, missed];
+                barChartInstance.update();
+            }
+        }
+
+        const pieCanvas = document.getElementById('pieChart');
+        if (pieCanvas) {
+            if (!pieChartInstance) {
+                pieChartInstance = new Chart(pieCanvas, {
+                    type: 'pie',
+                    data: {
+                        labels: ['Taken', 'Missed'],
+                        datasets: [{
+                            data: [taken, missed],
+                            backgroundColor: ['#0f766e', '#99f6e4'],
+                            borderColor: ['#ffffff', '#ffffff'],
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#334155'
+                                }
+                            }
+                        }
+                    }
+                });
+            } else {
+                pieChartInstance.data.datasets[0].data = [taken, missed];
+                pieChartInstance.update();
+            }
+        }
+
+    } catch (err) {
+        console.error("loadAnalytics() error:", err);
+    }
+}
+
+loadAnalytics();
+setInterval(loadAnalytics, 5000);
+
+function toggleNotifications() {
+    const panel = document.getElementById('notification-panel');
+    const isOpen = (panel.style.display === 'block');
+    panel.style.display = isOpen ? 'none' : 'block';
+}
+
+function closeNotifications() {
+    document.getElementById('notification-panel').style.display = 'none';
+}
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('notif-wrapper');
+    const panel = document.getElementById('notification-panel');
+    if (!wrapper.contains(e.target)) {
+        panel.style.display = 'none';
+    }
+});
+
+async function acknowledge(noteId, action, minutes = 5) {
+    const payload = action === 'snooze'
+        ? { action: 'snooze', minutes: minutes }
+        : { action: action };
+
+    await fetch(`/api/notifications/${noteId}/ack`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(payload)
+    });
+
+    await loadNotifications();
+    await loadAnalytics();
+}
+
+async function loadNotifications() {
+    try {
+        const countEl = document.getElementById('notif-count');
+        let bodyEl = document.getElementById('notification-body');
+        if (!bodyEl) bodyEl = document.getElementById('notification-panel');
+        if (!bodyEl) return;
+
+        const [pendingRes, recentRes] = await Promise.all([
+            fetch('/api/notifications/pending'),
+            fetch('/api/notifications/recent')
+        ]);
+
+        const pendingText = await pendingRes.text();
+        const recentText = await recentRes.text();
+
+        let pending = [];
+        let recent = [];
+
+        try { pending = JSON.parse(pendingText) || []; } catch(e) { pending = []; }
+        try { recent = JSON.parse(recentText) || []; } catch(e) { recent = []; }
+
+        const pendingCount = Array.isArray(pending) ? pending.length : 0;
+        if (countEl) {
+            if (pendingCount > 0) {
+                countEl.innerText = pendingCount;
+                countEl.style.display = 'inline';
+            } else {
+                countEl.style.display = 'none';
+            }
+        }
+
+        const map = new Map();
+        (Array.isArray(pending) ? pending : []).forEach(n => {
+            if (n && n.id != null) map.set(n.id, { ...n, _section: "pending" });
+        });
+        (Array.isArray(recent) ? recent : []).forEach(n => {
+            if (n && n.id != null) map.set(n.id, { ...n, _section: "recent" });
+        });
+
+        let merged = Array.from(map.values());
+
+        merged.sort((a, b) => {
+            const ap = (a._section === "pending") ? 0 : 1;
+            const bp = (b._section === "pending") ? 0 : 1;
+            if (ap !== bp) return ap - bp;
+
+            const ad = a.scheduled_datetime ? new Date(a.scheduled_datetime).getTime() : 0;
+            const bd = b.scheduled_datetime ? new Date(b.scheduled_datetime).getTime() : 0;
+            if (bd !== ad) return bd - ad;
+
+            return (b.id || 0) - (a.id || 0);
+        });
+
+        const newestPending = merged.find(n => n._section === "pending");
+        merged = [
+            ...(newestPending ? [newestPending] : []),
+            ...merged.filter(n => n._section !== "pending")
+        ];
+
+        bodyEl.innerHTML = '';
+
+        if (!merged.length) {
+            bodyEl.innerHTML = `<div class="notification-item" style="color:#777;">No notifications</div>`;
+            return;
+        }
+
+        merged.forEach(n => {
+            const time = n.scheduled_datetime
+                ? new Date(n.scheduled_datetime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                : '--:--';
+
+            let statusLabel = (n._section === "pending") ? "Pending" : (n.status || "");
+
+            let badgeHtml = '';
+            if (statusLabel) {
+                let badgeClass = 'bg-secondary';
+                if (statusLabel === 'Pending') badgeClass = 'bg-primary';
+                if (statusLabel === 'Taken') badgeClass = 'bg-success';
+                if (statusLabel === 'Missed') badgeClass = 'bg-danger';
+                if (statusLabel === 'Snoozed') badgeClass = 'bg-warning text-dark';
+                badgeHtml = `<span class="badge ${badgeClass}" style="white-space:nowrap;">${statusLabel}</span>`;
+            }
+
+            const item = document.createElement('div');
+            item.className = 'notification-item';
+            item.innerHTML = `
+                <div style="display:flex; justify-content:space-between; gap:10px; align-items:flex-start;">
+                    <div style="flex:1; min-width:0;">
+                        <strong>${n.message || ''}</strong><br>
+                        <small>${time}</small>
+                    </div>
+                    <div>${badgeHtml}</div>
+                </div>
+            `;
+            bodyEl.appendChild(item);
+        });
+
+    } catch (err) {
+        console.error("loadNotifications() error:", err);
+    }
+}
+
+loadNotifications();
+setInterval(loadNotifications, 10000);
+
+function toggleSidebar() {
+    document.querySelector(".sidebar").classList.toggle("active");
+}
+</script>
+
+</body>
+</html>

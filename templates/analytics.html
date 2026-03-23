@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MedisiNa - Analytics</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <style>
+        .analytics-topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .analytics-topbar-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-width: 0;
+        }
+
+        .analytics-topbar-left h3 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .analytics-welcome {
+            margin-top: 18px;
+            margin-bottom: 18px;
+        }
+
+        .analytics-welcome p {
+            margin: 0;
+            font-size: 17px;
+            color: #374151;
+        }
+
+        .analytics-layout {
+            display: grid;
+            grid-template-columns: 320px 1fr;
+            gap: 20px;
+            align-items: start;
+        }
+
+        .analytics-summary {
+            display: grid;
+            gap: 14px;
+        }
+
+        .analytics-summary .card-item {
+            min-height: 120px;
+            border-radius: 16px;
+            margin-bottom: 0 !important;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        .analytics-summary .card-item h5 {
+            margin-bottom: 8px;
+            font-size: 18px;
+            font-weight: 700;
+        }
+
+        .analytics-summary .card-item h3 {
+            margin: 0;
+            font-size: 32px;
+            font-weight: 800;
+        }
+
+        .analytics-charts {
+            display: grid;
+            gap: 18px;
+        }
+
+        .analytics-chart-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 16px;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.05);
+            border: 1px solid rgba(0,0,0,0.06);
+        }
+
+        .analytics-chart-card h5 {
+            margin-bottom: 14px;
+            font-size: 18px;
+            font-weight: 700;
+            color: #1f2937;
+        }
+
+        .chart-wrap {
+            height: 320px;
+            position: relative;
+        }
+
+        .chart-wrap.compact {
+            height: 300px;
+        }
+
+        .chart-wrap canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        @media (max-width: 992px) {
+            .analytics-layout {
+                grid-template-columns: 1fr;
+            }
+
+            .analytics-summary {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 768px) {
+            .content {
+                padding: 12px;
+            }
+
+            .analytics-topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .analytics-topbar-left {
+                width: 100%;
+            }
+
+            .analytics-topbar-left h3 {
+                font-size: 22px;
+            }
+
+            .analytics-topbar .btn {
+                width: 100%;
+            }
+
+            .analytics-welcome p {
+                font-size: 15px;
+                line-height: 1.5;
+            }
+
+            .analytics-summary {
+                grid-template-columns: 1fr;
+            }
+
+            .analytics-summary .card-item {
+                min-height: 105px;
+                padding: 18px;
+            }
+
+            .analytics-summary .card-item h5 {
+                font-size: 17px;
+            }
+
+            .analytics-summary .card-item h3 {
+                font-size: 28px;
+            }
+
+            .analytics-chart-card {
+                padding: 14px;
+            }
+
+            .analytics-chart-card h5 {
+                font-size: 16px;
+                margin-bottom: 10px;
+            }
+
+            .chart-wrap,
+            .chart-wrap.compact {
+                height: 260px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .analytics-topbar-left h3 {
+                font-size: 20px;
+            }
+
+            .analytics-summary .card-item h3 {
+                font-size: 26px;
+            }
+
+            .chart-wrap,
+            .chart-wrap.compact {
+                height: 220px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <img src="https://img.pikbest.com/png-images/20250228/user-profile-vector-flat-illustration-avatar-person-icon-gender-neutral-silhouette_11563975.png!sw800" alt="User">
+        <h4>{{ session['user_name'] }}</h4>
+        <a href="/">📊 Dashboard</a>
+        <a href="/manage">📅 Schedule</a>
+        <a href="/analytics" style="background-color:rgba(255,255,255,0.18);">🧠 Analytics</a>
+        <a href="/history">📜 History</a>
+        {% if session.get('user_role') == 'admin' %}
+          <a href="/settings">⚙️ Settings</a>
+        {% endif %}
+    </div>
+
+    <div class="content">
+        <div class="topbar analytics-topbar">
+            <div class="analytics-topbar-left">
+                <button class="toggle-btn" onclick="toggleSidebar()">☰</button>
+                <h3>Detailed Analytics</h3>
+            </div>
+        </div>
+
+        <div class="analytics-welcome">
+            <p>Hello, <strong>{{ user_name }}</strong> 👋 — Detailed pill intake trends below.</p>
+        </div>
+
+        <div class="analytics-layout">
+            <div class="analytics-summary">
+                <div class="card-item card-blue">
+                    <h5>Total Pills</h5>
+                    <h3 id="total">0</h3>
+                </div>
+
+                <div class="card-item card-green">
+                    <h5>Pills Taken</h5>
+                    <h3 id="taken">0</h3>
+                </div>
+
+                <div class="card-item card-red">
+                    <h5>Pills Missed</h5>
+                    <h3 id="missed">0</h3>
+                </div>
+
+                <div class="card-item card-yellow">
+                    <h5>Compliance (%)</h5>
+                    <h3 id="compliance">0%</h3>
+                </div>
+            </div>
+
+            <div class="analytics-charts">
+                <div class="analytics-chart-card">
+                    <h5>Compliance Trend (Last 7 Days)</h5>
+                    <div class="chart-wrap compact">
+                        <canvas id="lineChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-card">
+                    <h5>Daily Pills Taken per Slot (Last 4 Days)</h5>
+                    <div class="chart-wrap compact">
+                        <canvas id="stackedBarChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="analytics-chart-card">
+                    <h5>Pills Distribution by Slot</h5>
+                    <div class="chart-wrap">
+                        <canvas id="donutChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script>
+let lineChartInstance = null;
+let stackedBarInstance = null;
+let donutChartInstance = null;
+
+function lastItems(arr, count) {
+    if (!Array.isArray(arr)) return [];
+    return arr.slice(Math.max(arr.length - count, 0));
+}
+
+async function loadPillsAnalytics() {
+  try {
+    const res = await fetch('/api/analytics_detail');
+    const data = await res.json();
+
+    document.getElementById('total').innerText = data.total ?? 0;
+    document.getElementById('taken').innerText = data.taken ?? 0;
+    document.getElementById('missed').innerText = data.missed ?? 0;
+    document.getElementById('compliance').innerText = (data.compliance ?? 0) + '%';
+
+    const tealPalette = [
+      '#0f766e',
+      '#14b8a6',
+      '#2dd4bf',
+      '#5eead4',
+      '#0d9488',
+      '#115e59',
+      '#99f6e4',
+      '#134e4a'
+    ];
+
+    // ---------- Compliance Trend (Last 7 Days) ----------
+    const trendLabels = lastItems(data.trend_labels || [], 7);
+    const trendData = lastItems(data.trend_data || [], 7);
+
+    const lineCanvas = document.getElementById('lineChart');
+    if (lineCanvas) {
+      if (!lineChartInstance) {
+        lineChartInstance = new Chart(lineCanvas, {
+          type: 'line',
+          data: {
+            labels: trendLabels,
+            datasets: [{
+              label: 'Compliance %',
+              data: trendData,
+              tension: 0.35,
+              fill: true,
+              borderColor: '#0f766e',
+              backgroundColor: 'rgba(20, 184, 166, 0.18)',
+              pointBackgroundColor: '#0f766e',
+              pointBorderColor: '#ffffff',
+              pointRadius: 4,
+              pointHoverRadius: 5,
+              borderWidth: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#334155' }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    return ` ${context.parsed.y}%`;
+                  }
+                }
+              }
+            },
+            scales: {
+              x: {
+                ticks: { color: '#475569' },
+                grid: { color: 'rgba(15, 118, 110, 0.08)' }
+              },
+              y: {
+                beginAtZero: true,
+                max: 100,
+                ticks: {
+                  color: '#475569',
+                  callback: function(value) {
+                    return value + '%';
+                  }
+                },
+                grid: { color: 'rgba(15, 118, 110, 0.08)' }
+              }
+            }
+          }
+        });
+      } else {
+        lineChartInstance.data.labels = trendLabels;
+        lineChartInstance.data.datasets[0].data = trendData;
+        lineChartInstance.update();
+      }
+    }
+
+    // ---------- Daily Pills Taken per Slot (Last 4 Days) ----------
+    const allDays = data.days_labels || ['Day 1', 'Day 2', 'Day 3', 'Day 4'];
+    const days = lastItems(allDays, 4);
+    const slots = data.slot_labels || [];
+    const daily = data.daily_slot_data || [];
+
+    const datasets = slots.map((slotName, i) => ({
+      label: slotName,
+      data: lastItems(daily[i] || [], 4),
+      backgroundColor: tealPalette[i % tealPalette.length],
+      borderColor: tealPalette[i % tealPalette.length],
+      borderWidth: 1,
+      borderRadius: 6,
+      borderSkipped: false
+    }));
+
+    const barCanvas = document.getElementById('stackedBarChart');
+    if (barCanvas) {
+      if (!stackedBarInstance) {
+        stackedBarInstance = new Chart(barCanvas, {
+          type: 'bar',
+          data: { labels: days, datasets },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: {
+                labels: { color: '#334155', boxWidth: 14 }
+              }
+            },
+            scales: {
+              x: {
+                stacked: true,
+                ticks: { color: '#475569' },
+                grid: { display: false }
+              },
+              y: {
+                stacked: true,
+                beginAtZero: true,
+                ticks: { precision: 0, color: '#475569' },
+                grid: { color: 'rgba(15, 118, 110, 0.08)' }
+              }
+            }
+          }
+        });
+      } else {
+        stackedBarInstance.data.labels = days;
+        stackedBarInstance.data.datasets = datasets;
+        stackedBarInstance.update();
+      }
+    }
+
+    // ---------- Pills Distribution by Slot ----------
+    const distributionRaw = data.slot_distribution || [];
+    const distributionPairs = slots.map((slotName, i) => ({
+      label: slotName,
+      value: Number(distributionRaw[i] || 0),
+      color: tealPalette[i % tealPalette.length]
+    })).filter(item => item.value > 0);
+
+    const donutLabels = distributionPairs.length ? distributionPairs.map(item => item.label) : ['No Data'];
+    const donutValues = distributionPairs.length ? distributionPairs.map(item => item.value) : [1];
+    const donutColors = distributionPairs.length ? distributionPairs.map(item => item.color) : ['#ccfbf1'];
+
+    const donutCanvas = document.getElementById('donutChart');
+    if (donutCanvas) {
+      if (!donutChartInstance) {
+        donutChartInstance = new Chart(donutCanvas, {
+          type: 'doughnut',
+          data: {
+            labels: donutLabels,
+            datasets: [{
+              data: donutValues,
+              backgroundColor: donutColors,
+              borderColor: '#ffffff',
+              borderWidth: 3,
+              hoverOffset: 10,
+              spacing: 3
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            cutout: '62%',
+            plugins: {
+              legend: {
+                position: 'bottom',
+                labels: {
+                  color: '#334155',
+                  boxWidth: 14,
+                  padding: 16,
+                  usePointStyle: true,
+                  pointStyle: 'circle'
+                }
+              },
+              tooltip: {
+                callbacks: {
+                  label: function(context) {
+                    const value = context.parsed || 0;
+                    const total = context.dataset.data.reduce((sum, v) => sum + v, 0);
+                    const percent = total ? ((value / total) * 100).toFixed(1) : 0;
+                    return ` ${context.label}: ${value} (${percent}%)`;
+                  }
+                }
+              }
+            }
+          }
+        });
+      } else {
+        donutChartInstance.data.labels = donutLabels;
+        donutChartInstance.data.datasets[0].data = donutValues;
+        donutChartInstance.data.datasets[0].backgroundColor = donutColors;
+        donutChartInstance.update();
+      }
+    }
+
+  } catch (err) {
+    console.error("Analytics detail error:", err);
+  }
+}
+
+loadPillsAnalytics();
+setInterval(loadPillsAnalytics, 10000);
+
+function toggleSidebar() {
+    document.querySelector(".sidebar").classList.toggle("active");
+}
+</script>
+
+</body>
+</html>

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin - Create User</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <style>
+    .helper-text { font-size: 12px; color: #666; margin-top: -8px; margin-bottom: 12px; }
+    .auth-actions { display:flex; gap:10px; margin-top: 10px; }
+    .btn-secondary { background:#64748b; border:none; color:#fff; }
+    .btn-secondary:hover { background:#475569; }
+  </style>
+</head>
+
+<body class="auth-body">
+  <div class="auth-container">
+    <h2>Create User Account</h2>
+    
+
+    <input type="text" id="name" placeholder="Username" required>
+    <input type="email" id="email" placeholder="Email" required>
+    <input type="password" id="password" placeholder="Password" required>
+
+    <div class="auth-actions">
+      <button onclick="createUser()">Create User</button>
+      <button class="btn-secondary" onclick="window.location.href='/settings'">Back</button>
+    </div>
+
+    <div id="msg" class="helper-text" style="margin-top:12px;"></div>
+  </div>
+
+  <script>
+    async function createUser() {
+      const name = document.getElementById("name").value.trim();
+      const email = document.getElementById("email").value.trim().toLowerCase();
+      const password = document.getElementById("password").value.trim();
+      const msg = document.getElementById("msg");
+      msg.innerText = "";
+
+      if (!name || !email || !password) {
+        msg.innerText = "Please fill all fields.";
+        return;
+      }
+
+      try {
+        const res = await fetch('/register', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, password })
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          alert("User created successfully!");
+          window.location.href = "/settings";
+        } else {
+          msg.innerText = data.error || "Create user failed.";
+        }
+      } catch (err) {
+        console.error(err);
+        msg.innerText = "An error occurred. Please try again.";
+      }
+    }
+  </script>
+</body>
+</html>
