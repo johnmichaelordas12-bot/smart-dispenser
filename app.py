@@ -1,3 +1,5 @@
+import pymysql
+pymysql.install_as_MySQLdb()
 from flask import Flask, render_template, request, jsonify, redirect, url_for, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from flask import jsonify, request
@@ -97,7 +99,13 @@ from config import API_KEY, SERVER_PORT, DEFAULT_SLOTS
 # ---------- App Setup ----------
 app = Flask(__name__)
 app.secret_key = "supersecretkey"
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql+pymysql://root:@localhost/smart_dispenser_db'
+db_user = os.getenv("MYSQLUSER")
+db_pass = os.getenv("MYSQLPASSWORD")
+db_host = os.getenv("MYSQLHOST")
+db_name = os.getenv("MYSQLDATABASE")
+db_port = os.getenv("MYSQLPORT", "3306")
+
+app.config['SQLALCHEMY_DATABASE_URI'] = f"mysql+pymysql://{db_user}:{db_pass}@{db_host}:{db_port}/{db_name}"
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
