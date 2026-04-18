@@ -295,16 +295,29 @@ def manage():
     return render_template("manage.html", slots=slots, medicines=medicines)
 
 def _day_number_from_date(target_date):
-    """
-    FIXED 4-day cycle anchor.
-    Never shifts even when earlier schedules are completed.
-    """
+    if isinstance(target_date, datetime):
+        target_date = target_date.date()
 
-    # Hard anchor = very first cycle start date
-    CYCLE_ANCHOR = datetime(2026, 4, 1).date()
-    # Replace with your actual Day 1 start date
+    # IMPORTANT:
+    # Use earliest schedule EVER created
+    # not only active schedules
 
-    diff_days = (target_date - CYCLE_ANCHOR).days
+    first_sched = (
+        MedicineSchedule.query
+        .filter(MedicineSchedule.date.isnot(None))
+        .order_by(
+            MedicineSchedule.date.asc(),
+            MedicineSchedule.id.asc()
+        )
+        .first()
+    )
+
+    if first_sched and first_sched.date:
+        anchor_date = first_sched.date
+    else:
+        anchor_date = now_ph().date()
+
+    diff_days = (target_date - anchor_date).days
 
     return (diff_days % 4) + 1
 
