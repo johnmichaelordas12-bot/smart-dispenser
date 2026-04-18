@@ -298,27 +298,14 @@ def _day_number_from_date(target_date):
     if isinstance(target_date, datetime):
         target_date = target_date.date()
 
-    # IMPORTANT:
-    # Use earliest schedule EVER created
-    # not only active schedules
+    today = now_ph().date()
 
-    first_sched = (
-        MedicineSchedule.query
-        .filter(MedicineSchedule.date.isnot(None))
-        .order_by(
-            MedicineSchedule.date.asc(),
-            MedicineSchedule.id.asc()
-        )
-        .first()
-    )
+    # Current cycle is relative to TODAY
+    # Today is always the reference point.
 
-    if first_sched and first_sched.date:
-        anchor_date = first_sched.date
-    else:
-        anchor_date = now_ph().date()
+    diff_days = (target_date - today).days
 
-    diff_days = (target_date - anchor_date).days
-
+    # Today = Day 1
     return (diff_days % 4) + 1
 
 def _parse_hhmm(time_str):
