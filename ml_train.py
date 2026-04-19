@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt
 # =========================
 # CONFIG
 # =========================
-DB_URI = "mysql+pymysql://root:@localhost/smart_dispenser_db"
+DB_URI = "mysql+pymysql://root:sNyqdGrtFFjmBCSEbgFRAyNWmkSODZWF@centerbeam.proxy.rlwy.net:23852/railway"
 WINDOW_MINUTES = 60
 MODEL_PATH = "model_lgbm.pkl"
 
@@ -182,10 +182,10 @@ def train():
 
     print("\n=== Classification Report ===")
     print(classification_report(y_test, y_pred, digits=4))
-    print("Accuracy :", round(acc, 4))
-    print("Precision:", round(prec, 4))
-    print("Recall   :", round(rec, 4))
-    print("F1-score :", round(f1, 4))
+    print(f"Accuracy: {acc*100:.2f}%")
+    print(f"Precision: {prec*100:.2f}%")
+    print(f"Recall: {rec*100:.2f}%")
+    print(f"F1-score: {f1*100:.2f}%")
     print("ROC-AUC  :", auc)
 
     print("\nConfusion Matrix (rows=true, cols=pred):")
