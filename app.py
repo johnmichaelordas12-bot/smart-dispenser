@@ -1170,7 +1170,6 @@ def generate_notifications_for_now():
         window_start_local = now_local.replace(second=0, microsecond=0)
         window_end_local = window_start_local + timedelta(minutes=2)
 
-        # ✅ only schedules for TODAY
         todays_schedules = (
             MedicineSchedule.query
             .filter(MedicineSchedule.is_active == True)
@@ -1181,17 +1180,23 @@ def generate_notifications_for_now():
         for sched in todays_schedules:
             if not sched.time:
                 continue
+
             try:
                 hour, minute = map(int, sched.time.split(":"))
             except:
                 continue
 
-            # ✅ use sched.date, not now_local.date
             scheduled_local = tz.localize(datetime(
-                sched.date.year, sched.date.month, sched.date.day, hour, minute, 0
+                sched.date.year,
+                sched.date.month,
+                sched.date.day,
+                hour,
+                minute,
+                0
             ))
 
             if window_start_local <= scheduled_local < window_end_local:
+
                 scheduled_utc = to_utc_naive(scheduled_local)
 
                 exists = Notification.query.filter_by(
@@ -1201,9 +1206,102 @@ def generate_notifications_for_now():
                 ).first()
 
                 if not exists:
+
+                    # Default patient reminder
+                    notif_message = f"Time to take {sched.medicine.name}"
+
+                    # --------------------------
+                    # GBDT Risk Prediction
+                    # --------------------------
+                    try:
+                        if MODEL is not None:
+
+                            cutoff = datetime.utcnow() - timedelta(days=7)
+
+                            q = (
+                                Intake.query
+                                .join(Slot, Intake.slot_id == Slot.id)
+                                .filter(Slot.id == sched.slot_id)
+                                .filter(Intake.scheduled_time >= cutoff)
+                            )
+
+                            history_count_last_7 = q.count()
+                            missed_last_7 = q.filter(Intake.taken == False).count()
+                            taken_last_7 = q.filter(Intake.taken == True).count()
+
+                            adherence_rate_last_7 = (
+                                taken_last_7 / history_count_last_7
+                                if history_count_last_7 > 0 else 0.0
+                            )
+
+                            row = {
+                                "slot_number": sched.slot.slot_number,
+                                "sched_hour": hour,
+                                "sched_minute": minute,
+                                "sched_dow": now_local.weekday(),
+                                "medicine_id": sched.medicine_id,
+                                "taken_last_7": taken_last_7,
+                                "missed_last_7": missed_last_7,
+                                "adherence_rate_last_7": adherence_rate_last_7,
+                            }
+
+                            X = pd.DataFrame([row], columns=FEATURES)
+
+                            classes = list(MODEL.classes_)
+                            miss_index = classes.index(1)
+
+                            risk = float(
+                                MODEL.predict_proba(X)[0][miss_index]
+                            )
+
+                            # High-risk prediction
+                            if risk >= 0.70:
+
+                                # Patient warning notification
+                                notif_message = (
+                                    "Medication reminder: High missed-dose risk detected. "
+                                    "Please take your dose on time."
+                                )
+
+                                # Caregiver/Admin email alert
+                                try:
+                                    recipients = get_recipient_emails("admin")
+
+                                    subject = "High Missed-Dose Risk Alert"
+
+                                    body = f"""
+                                    <html>
+                                    <body>
+                                        <h3>Predictive Adherence Alert</h3>
+
+                                        <p>A patient is predicted to miss an upcoming medication dose.</p>
+
+                                        <p><b>Medicine:</b> {sched.medicine.name}</p>
+                                        <p><b>Scheduled Time:</b> {sched.time}</p>
+                                        <p><b>Risk Score:</b> {round(risk*100,2)}%</p>
+
+                                        <p>Please monitor the patient remotely.</p>
+
+                                    </body>
+                                    </html>
+                                    """
+
+                                    send_status_email(
+                                        recipients,
+                                        subject,
+                                        body
+                                    )
+
+                                except Exception as e:
+                                    print("Caregiver alert error:", e)
+
+                    except Exception as e:
+                        print("Prediction warning:", e)
+
+                    # Save notification
                     db.session.add(Notification(
                         scheduled_id=sched.id,
-                        message=f"Time to take {sched.medicine.name}",
+                        message=notif_message,
                         status="pending",
                         scheduled_datetime=scheduled_utc
                     ))
