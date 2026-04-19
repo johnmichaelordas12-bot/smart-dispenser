@@ -4,6 +4,9 @@ import joblib
 from sqlalchemy import create_engine
 import lightgbm as lgb
 
+from sklearn.model_selection import train_test_split
+from sklearn.linear_model import LogisticRegression
+
 from sklearn.metrics import (
     classification_report,
     roc_auc_score,
@@ -146,25 +149,21 @@ def train():
 
     # Time-aware split
     df = df.sort_values("scheduled_occurrence").reset_index(drop=True)
-    split_idx = int(len(df) * 0.8)
 
-    X_train = X.iloc[:split_idx]
-    y_train = y.iloc[:split_idx]
-    X_test = X.iloc[split_idx:]
-    y_test = y.iloc[split_idx:]
 
-    if len(X_train) == 0 or len(X_test) == 0:
-        raise ValueError("Not enough data to split train/test.")
-
-    model = lgb.LGBMClassifier(
-        n_estimators=300,
-        learning_rate=0.05,
-        num_leaves=31,
-        subsample=0.9,
-        colsample_bytree=0.9,
-        random_state=42
-    )
-
+    
+    X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42,
+    stratify=y
+)
+    model = LogisticRegression(
+    class_weight="balanced",
+    random_state=42,
+    max_iter=1000
+)
     model.fit(X_train, y_train)
 
     y_pred = model.predict(X_test)
