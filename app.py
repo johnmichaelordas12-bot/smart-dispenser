@@ -41,10 +41,6 @@ except Exception as e:
 
 
 
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-
 
 import pytz
 tz = pytz.timezone("Asia/Manila")
@@ -1810,65 +1806,47 @@ GMAIL_SENDER = os.getenv("GMAIL_SENDER")
 GMAIL_APP_PASSWORD = os.getenv("GMAIL_APP_PASSWORD")
 
 
+import requests
+
 def send_status_email(to_emails, subject: str, html_body: str):
-    """
-    Sends the same email to one or many recipients.
-    Sends individually so recipient addresses stay private.
-    """
 
-    try:
-        # ✅ Normalize recipients
-        if isinstance(to_emails, str):
-            to_emails = [to_emails]
+    if isinstance(to_emails, str):
+        to_emails = [to_emails]
 
-        to_emails = [e.strip().lower() for e in (to_emails or []) if e and e.strip()]
-        to_emails = list(dict.fromkeys(to_emails))  # remove duplicates
+    to_emails = [e.strip().lower() for e in to_emails if e]
 
-        print("EMAIL DEBUG => recipients:", to_emails)
-        print("EMAIL DEBUG => sender:", GMAIL_SENDER)
-        print("EMAIL DEBUG => password exists:", bool(GMAIL_APP_PASSWORD))
+    url = "https://api.brevo.com/v3/smtp/email"
 
-        # ❌ No recipients
-        if not to_emails:
-            raise Exception("Recipient email list is empty")
+    headers = {
+        "accept": "application/json",
+        "api-key": os.getenv("BREVO_API_KEY"),
+        "content-type": "application/json"
+    }
 
-        # ❌ Missing credentials
-        if not GMAIL_SENDER or not GMAIL_APP_PASSWORD:
-            raise Exception("Gmail credentials not set in environment variables")
+    for email in to_emails:
 
-        # ✅ Remove accidental spaces in password
-        app_password = GMAIL_APP_PASSWORD.replace(" ", "").strip()
+        payload = {
+            "sender": {
+                "name": "MedisiNa System",
+                "email": os.getenv("GMAIL_SENDER")
+            },
+            "to": [
+                {
+                    "email": email
+                }
+            ],
+            "subject": subject,
+            "htmlContent": html_body
+        }
 
-        # ✅ Connect to Gmail SMTP
-        server = smtplib.SMTP("smtp-relay.brevo.com", 465, timeout=60)
-        server.set_debuglevel(1)  # 🔥 shows SMTP logs
+        response = requests.post(
+            url,
+            json=payload,
+            headers=headers,
+            timeout=30
+        )
 
-        # ✅ Login
-        server.login(os.getenv("BREVO_LOGIN"), app_password)
-        print("EMAIL DEBUG => LOGIN SUCCESS")
-
-        # ✅ Send emails one by one
-        for to_email in to_emails:
-            try:
-                msg = MIMEMultipart("alternative")
-                msg["From"] = GMAIL_SENDER
-                msg["To"] = to_email
-                msg["Subject"] = subject
-
-                msg.attach(MIMEText(html_body, "html"))
-
-                server.sendmail(GMAIL_SENDER, to_email, msg.as_string())
-                print("EMAIL DEBUG => SENT OK TO:", to_email)
-
-            except Exception as send_err:
-                print(f"EMAIL ERROR sending to {to_email}:", send_err)
-
-        server.quit()
-        print("EMAIL DEBUG => ALL DONE")
-
-    except Exception as e:
-        print("EMAIL ERROR (MAIN):", str(e))
-        raise
+        print("BREVO RESPONSE:", response.status_code, response.text)
 
 @app.route("/api/test_email", methods=["GET"])
 def test_email():
