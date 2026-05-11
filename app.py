@@ -1840,15 +1840,11 @@ def send_status_email(to_emails, subject: str, html_body: str):
         app_password = GMAIL_APP_PASSWORD.replace(" ", "").strip()
 
         # ✅ Connect to Gmail SMTP
-        server = smtplib.SMTP("smtp-relay.brevo.com", 587, timeout=30)
+        server = smtplib.SMTP("smtp-relay.brevo.com", 465, timeout=60)
         server.set_debuglevel(1)  # 🔥 shows SMTP logs
 
-        server.ehlo()
-        server.starttls()
-        server.ehlo()
-
         # ✅ Login
-        server.login(GMAIL_SENDER, app_password)
+        server.login(os.getenv("BREVO_LOGIN"), app_password)
         print("EMAIL DEBUG => LOGIN SUCCESS")
 
         # ✅ Send emails one by one
